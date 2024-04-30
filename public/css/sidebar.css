@@ -1,0 +1,63 @@
+/* public/css/sidebar.css */
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
+
+.sidebar {
+    width: 250px;
+    height: 100%;
+    background-color: #292929; /* Dark background color */
+    color: #fff; /* Text color */
+    font-family: 'Roboto', sans-serif; /* Use Roboto font */
+    position: fixed;
+    top: 0;
+    left: 0;
+    padding-top: 20px;
+    box-shadow: 0px 0px 20px rgba(0, 0, 0, 0.1);
+}
+
+.logo {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.logo h2 {
+    color: #ff5733; /* Accent color */
+}
+
+.menu {
+    list-style-type: none;
+    padding: 0;
+    margin-top: 50px;
+}
+
+.menu li {
+    padding: 10px 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1); /* Separator */
+    transition: background-color 0.3s ease;
+}
+
+.menu li:last-child {
+    border-bottom: none; /* Remove separator from last item */
+}
+
+.menu li a {
+    color: #fff; /* Text color */
+    text-decoration: none;
+    font-size: 16px;
+    display: block;
+}
+
+.menu li:hover {
+    background-color: rgba(255, 255, 255, 0.1); /* Hover effect */
+}
+
+.menu li a:hover {
+    color: #ff5733; /* Accent color on hover */
+}
+
+/* Media query for small screens (mobile) */
+@media (max-width: 768px) {
+    .sidebar {
+        width: 100%; /* Full width on small screens */
+        z-index: 1000; /* Ensure sidebar is on top of other content */
+    }
+}
