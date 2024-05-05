@@ -19,25 +19,34 @@ class LeaveController extends Controller
     {
         $request->validate([
             'leave_type' => 'required',
+            'other_leave_type' => 'nullable|required_if:leave_type,Other', // Add validation for other_leave_type
             'start_date' => 'required',
             'end_date' => 'required',
             'reason' => 'required',
+            'covering_person' => 'required'
         ]);
-
+    
         $leave = new Leave;
-
-        $leave->user_id=auth()->user()->id;
-        $leave->leave_type=$request->leave_type;
-        $leave->start_date=$request->start_date;
-        $leave->end_date=$request->end_date;
-        $leave->reason=$request->reason;
-        $leave->additional_notes=$request->additional_notes;
-        $leave->supervisor_approval="Pending";
-        $leave->management_approval="Pending";
-
-
+    
+        $leave->user_id = auth()->user()->id;
+    
+        // Check if 'Other' was selected and use 'other_leave_type' if so
+        if ($request->leave_type === 'Other') {
+            $leave->leave_type = $request->other_leave_type;
+        } else {
+            $leave->leave_type = $request->leave_type;
+        }
+    
+        $leave->start_date = $request->start_date;
+        $leave->end_date = $request->end_date;
+        $leave->reason = $request->reason;
+        $leave->additional_notes = $request->additional_notes;
+        $leave->covering_person = $request->covering_person;
+        $leave->supervisor_approval = "Pending";
+        $leave->management_approval = "Pending";
+    
         $leave->save();
-
+    
         return back()->with('msg', 'Your leave request has been successfully processed.');
     }
 
@@ -49,20 +58,22 @@ class LeaveController extends Controller
         // $leaves = Leave::where('user_id', auth()->user()->id)->get();  Fetch leaves for the authenticated user
 
         $leaves = Leave::join('users', 'users.id', '=', 'leaves.user_id')
-                            ->select(
-                                'users.name',
-                                'leaves.id',
-                                'leaves.user_id',
-                                'leaves.leave_type',
-                                'leaves.start_date',
-                                'leaves.end_date',
-                                'leaves.reason',
-                                'leaves.additional_notes',
-                                'leaves.additional_notes'
-                            )
-                            ->where('leaves.user_id', auth()->user()->id)
-                            ->where('leaves.supervisor_approval', "Pending")
-                            ->get();
+                    ->join('users as covering_users', 'covering_users.id', '=', 'leaves.covering_person')
+                    ->select(
+                        'users.id',
+                        'covering_users.name',
+                        'leaves.id',
+                        'leaves.user_id',
+                        'leaves.leave_type',
+                        'leaves.start_date',
+                        'leaves.end_date',
+                        'leaves.reason',
+                        'leaves.additional_notes',
+                        'leaves.additional_notes'
+                    )
+                    ->where('leaves.user_id', auth()->user()->id)
+                    ->where('leaves.supervisor_approval', "Pending")
+                    ->get();
 
 
         $manageLeaveView = View::make('components.manage-leave', ['leave' => $leaves])->render(); // Render the manage-leave view
@@ -71,27 +82,43 @@ class LeaveController extends Controller
 
     public function editLeave($id){
         $data = DB::table('leaves')->where('id',$id)->first();
-        $editLeaveView = view('components.edit-leave', compact('data'))->render(); // Render the edit-leave view
-        return view('emp-edit-leave', ['editLeaveView' => $editLeaveView]);
+        $users = $this->fetchUsers();  // Fetch users using the refactored method
+        return view('emp-edit-leave', compact('data', 'users'));
     }
 
-    public function updateLeave(Request $request){
-
+    public function updateLeave(Request $request) {
         $request->validate([
             'leave_type' => 'required',
+            'other_leave_type' => 'nullable|required_if:leave_type,Other', // Validation for other_leave_type
             'start_date' => 'required',
             'end_date' => 'required',
             'reason' => 'required',
+            'covering_person' => 'required',
         ]);
-
+    
+        // Determine the correct leave type to store
+        $leaveType = $request->leave_type === 'Other' ? $request->other_leave_type : $request->leave_type;
+    
+        // Update the leave record
         DB::table('leaves')->where('id', $request->id)->update([
-            'leave_type'=>$request->leave_type,
-            'start_date'=>$request->start_date,
-            'end_date'=>$request->end_date,
-            'reason'=>$request->reason,
-            'additional_notes'=>$request->additional_notes,
+            'leave_type' => $leaveType,
+            'start_date' => $request->start_date,
+            'end_date' => $request->end_date,
+            'reason' => $request->reason,
+            'additional_notes' => $request->additional_notes,
+            'covering_person' => $request->covering_person,
         ]);
-        return redirect()->to('/manage-leave')->with('message', 'Leave successfully updated!');
+    
+        // Redirect based on user type
+        if (auth()->user()->usertype == 'user') {
+            return redirect()->to('/manage-leave')->with('message', 'Leave successfully updated!');
+        } else if (auth()->user()->usertype == 'supervisor') {
+            return redirect()->to('/manage-supervisor-leave')->with('message', 'Leave successfully updated!');
+        } else if (auth()->user()->usertype == 'management') {
+            return redirect()->to('/manage-management-leave')->with('message', 'Leave successfully updated!');
+        } else if (auth()->user()->usertype == 'admin') {
+            return redirect()->to('/manage-leave')->with('message', 'Leave successfully updated!');
+        }
     }
 
     public function deleteLeave($id){
@@ -184,7 +211,7 @@ class LeaveController extends Controller
                     ->where('supervisor_approval', 'Approved')
                     ->get();
         $manageLeavesView = View::make('components.mgt-get-leave', ['leave' => $leaves])->render(); // Render the manage-leave view
-        return view('supervisor.sup-manage-leave', ['manageLeavesView' => $manageLeavesView]);
+        return view('management.mgt-manage-leave', ['manageLeavesView' => $manageLeavesView]);
 
     }
 
@@ -378,7 +405,177 @@ class LeaveController extends Controller
         return view('dashboard', ['remainingLeavesView' => $remainingLeavesView]);
     }
     
+
+    // public function getuser() {
+    //     $users = User::all()->where('category',auth()->user()->category)->where('name','<>',auth()->user()->name);
+    //     $viewUsers = View::make('components.request-leave', ['users' => $users])->render(); // Render
+    //     return view('emp-leave', ['viewUsers' => $viewUsers, 'users' => $users]);
+    // }
+
+    // Fetch users, excluding management and the current user
+    private function fetchUsers() {
+        return User::where('usertype', '<>', 'management')
+                    ->where('name', '<>', auth()->user()->name)
+                    ->get();  // Fetch the list of users
+    }
+
+
+    public function getuser() {
+        $users = $this->fetchUsers();
+        $viewUsers = View::make('components.request-leave', ['users' => $users])->render(); // Render
+        return view('emp-leave', ['viewUsers' => $viewUsers, 'users' => $users]);
+    }
+
+
+    public function getSupuser() {
+        $users = $this->fetchUsers();
+        $viewSupUsers = View::make('components.sup-request-leave', ['users' => $users])->render(); // Render
+        return view('supervisor.sup-leave', ['viewSupUsers' => $viewSupUsers, 'users' => $users]);
+    }
+
+    public function getMgtUser() {
+        $users = $this->fetchUsers();
+        $viewMgtUsers = View::make('components.mgt-request-leave', ['users' => $users])->render(); // Render
+        return view('management.mgt-leave', ['viewMgtUsers' => $viewMgtUsers, 'users' => $users]);
+    }
     
+    public function storeSupLeave(Request $request)
+    {
+        $request->validate([
+            'leave_type' => 'required',
+            'other_leave_type' => 'nullable|required_if:leave_type,Other', // Add validation for other_leave_type
+            'start_date' => 'required',
+            'end_date' => 'required',
+            'reason' => 'required',
+            'covering_person' => 'required'
+        ]);
     
+        $leave = new Leave;
     
+        $leave->user_id = auth()->user()->id;
+    
+        // Check if 'Other' was selected and use 'other_leave_type' if so
+        if ($request->leave_type === 'Other') {
+            $leave->leave_type = $request->other_leave_type;
+        } else {
+            $leave->leave_type = $request->leave_type;
+        }
+    
+        $leave->start_date = $request->start_date;
+        $leave->end_date = $request->end_date;
+        $leave->reason = $request->reason;
+        $leave->additional_notes = $request->additional_notes;
+        $leave->covering_person = $request->covering_person;
+        $leave->supervisor_approval = "Approved";
+        $leave->management_approval = "Pending";
+    
+        $leave->save();
+    
+        return back()->with('msg', 'Your leave request has been successfully processed.');
+    }
+
+    public function viewSupLeaves(Request $request) {
+        // $leaves = Leave::where('user_id', auth()->user()->id)->get();  Fetch leaves for the authenticated user
+
+        $leaves = Leave::join('users', 'users.id', '=', 'leaves.user_id')
+                    ->join('users as covering_users', 'covering_users.id', '=', 'leaves.covering_person')
+                    ->select(
+                        'users.id',
+                        'covering_users.name',
+                        'leaves.id',
+                        'leaves.user_id',
+                        'leaves.leave_type',
+                        'leaves.start_date',
+                        'leaves.end_date',
+                        'leaves.reason',
+                        'leaves.additional_notes',
+                        'leaves.additional_notes'
+                    )
+                    ->where('leaves.user_id', auth()->user()->id)
+                    ->where('leaves.management_approval', "Pending")
+                    ->get();
+
+
+        $manageLeaveView = View::make('components.manage-leave', ['leave' => $leaves])->render(); // Render the manage-leave view
+        return view('supervisor.manage-my-leave', ['manageLeaveView' => $manageLeaveView]);
+    }
+
+    public function editSupLeave($id) {
+        $data = DB::table('leaves')->where('id', $id)->first();
+        $users = $this->fetchUsers();  // Fetch users using the refactored method
+    
+        // Pass 'data' and 'users' directly to 'supervisor.edit-my-leave' without rendering to string
+        return view('supervisor.edit-my-leave', compact('data', 'users'));
+    }
+
+
+    public function storeMgtLeave(Request $request)
+    {
+        $request->validate([
+            'leave_type' => 'required',
+            'other_leave_type' => 'nullable|required_if:leave_type,Other', // Add validation for other_leave_type
+            'start_date' => 'required',
+            'end_date' => 'required',
+            'reason' => 'required',
+            'covering_person' => 'required'
+        ]);
+    
+        $leave = new Leave;
+    
+        $leave->user_id = auth()->user()->id;
+    
+        // Check if 'Other' was selected and use 'other_leave_type' if so
+        if ($request->leave_type === 'Other') {
+            $leave->leave_type = $request->other_leave_type;
+        } else {
+            $leave->leave_type = $request->leave_type;
+        }
+    
+        $leave->start_date = $request->start_date;
+        $leave->end_date = $request->end_date;
+        $leave->reason = $request->reason;
+        $leave->additional_notes = $request->additional_notes;
+        $leave->covering_person = $request->covering_person;
+        $leave->supervisor_approval = "Approved";
+        $leave->management_approval = "Approved";
+    
+        $leave->save();
+    
+        return back()->with('msg', 'Your leave request has been successfully processed.');
+    }
+    
+
+    public function viewMgtLeaves(Request $request) {
+        // $leaves = Leave::where('user_id', auth()->user()->id)->get();  Fetch leaves for the authenticated user
+
+        $leaves = Leave::join('users', 'users.id', '=', 'leaves.user_id')
+                    ->join('users as covering_users', 'covering_users.id', '=', 'leaves.covering_person')
+                    ->select(
+                        'users.id',
+                        'covering_users.name',
+                        'leaves.id',
+                        'leaves.user_id',
+                        'leaves.leave_type',
+                        'leaves.start_date',
+                        'leaves.end_date',
+                        'leaves.reason',
+                        'leaves.additional_notes',
+                        'leaves.additional_notes'
+                    )
+                    ->where('leaves.user_id', auth()->user()->id)
+                    ->get();
+
+
+        $manageLeaveView = View::make('components.manage-leave', ['leave' => $leaves])->render(); // Render the manage-leave view
+        return view('management.manage-my-leave', ['manageLeaveView' => $manageLeaveView]);
+    }
+    
+    public function editMgtLeave($id) {
+        $data = DB::table('leaves')->where('id', $id)->first();
+        $users = $this->fetchUsers();  // Fetch users using the refactored method
+    
+        // Pass 'data' and 'users' directly to 'management.edit-my-leave' without rendering to string
+        return view('management.edit-my-leave', compact('data', 'users'));
+    }
+
 }

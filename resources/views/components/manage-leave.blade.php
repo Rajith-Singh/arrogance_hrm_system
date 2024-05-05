@@ -29,6 +29,7 @@
                                     <th>End Date</th>
                                     <th>Reason</th>
                                     <th>Additional Notes</th>
+                                    <th>Covering Person</th>
                                     <th>Actions</th>
                                 </tr>
                                 </thead>
@@ -40,8 +41,17 @@
                                     <td>{{$data->end_date}}</td>
                                     <td>{{$data->reason}}</td>
                                     <td>{{$data->additional_notes}}</td>
+                                    <td>{{$data->name}}</td>
                                     <td>
-                                    <a href="/editLeave/{{$data->id}}" class="btn btn-warning btn-sm">Edit</a>
+                                    @if(auth()->user()->usertype == 'user')
+                                        <a href="/editLeave/{{$data->id}}" class="btn btn-warning btn-sm">Edit</a>
+                                    @elseif(auth()->user()->usertype == 'supervisor')
+                                        <a href="/editSupLeave/{{$data->id}}" class="btn btn-warning btn-sm">Edit</a>
+                                    @elseif(auth()->user()->usertype == 'management')
+                                        <a href="/editMgtLeave/{{$data->id}}" class="btn btn-warning btn-sm">Edit</a>
+                                    @elseif(auth()->user()->usertype == 'admin')
+                                        <a href="/editLeave/{{$data->id}}" class="btn btn-warning btn-sm">Edit</a>
+                                    @endif
                                     <form action="/deleteLeave/{{$data->id}}" method="POST" style="display: inline;">
                                         @csrf
                                         @method('DELETE')

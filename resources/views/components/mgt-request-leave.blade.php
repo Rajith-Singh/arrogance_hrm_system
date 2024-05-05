@@ -13,7 +13,7 @@
                     <div class="p-6">
                         <x-validation-errors class="mb-4" />
 
-                        <form method="POST" action="/saveLeave">
+                        <form method="POST" action="/saveMgtLeave">
                             @csrf
 
                             @if(session('msg'))
@@ -24,10 +24,6 @@
                                 <x-label for="leave_type" value="{{ __('Leave Type') }}" />
                                 <select id="leave_type_select" name="leave_type" class="block mt-1 w-full">
                                     <option value="" disabled selected>Select Leave Type</option>
-                                    @if(auth()->user()->category == 'internship')
-                                        <!-- Show Study/Training Leave as a priority option for interns -->
-                                        <option value="Study/Training Leave">Study/Training Leave</option>
-                                    @endif
                                     <!-- Common leave options available to all users -->
                                     <option value="Casual Leave">Casual Leave</option>
                                     <option value="Annual Leave">Annual Leave</option>
@@ -35,10 +31,6 @@
                                     <option value="Maternity/Paternity Leave">Maternity/Paternity Leave</option>
                                     <option value="Work On Leave">Work On Leave</option>
                                     <option value="No Pay Leave">No Pay Leave</option>
-                                    <!-- Include Study/Training Leave for non-interns if not already included -->
-                                    @if(auth()->user()->category != 'internship')
-                                        <option value="Study/Training Leave">Study/Training Leave</option>
-                                    @endif
                                     <option value="Other">Other</option>
                                 </select>
 

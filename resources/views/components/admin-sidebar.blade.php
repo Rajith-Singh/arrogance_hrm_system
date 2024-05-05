@@ -17,17 +17,21 @@
 				<div class="p-4 pt-5">
                   <img class="img logo rounded-circle mb-5" src="{{ Auth::user()->profile_photo_url }}" alt="{{ Auth::user()->name }}" />
 	        <ul class="list-unstyled components mb-5">
-                <li class="active">
-                    <a href="#">Admin Dashboard</a>
+                <li class="{{ Request::is('home') ? 'active' : '' }}">
+                    <a href="/home">Admin Dashboard</a>
                 </li>
 	          <li>
 
-            <li>
-              <a href="#">Manage Users</a>
+            <li class="#">
+              <a href="#">User Registration</a>
 	          </li>
 
-            <li>
-              <a href="#">Leave Management</a>
+            <li class="{{ Request::is('view-users') ? 'active' : '' }}">
+              <a href="/view-users">Manage Users</a>
+	          </li>
+
+            <li class="{{ Request::is('request-leave') ? 'active' : '' }}">
+              <a href="/request-leave">Request Leave</a>
 	          </li>
 
 	          <li>

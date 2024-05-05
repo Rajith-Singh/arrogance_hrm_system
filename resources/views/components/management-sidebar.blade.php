@@ -22,9 +22,16 @@
                 </li>
 	          <li>
 
+            <li class="{{ Request::is('request-management-leave') ? 'active' : '' }}">
+              <a href="/request-management-leave">Request Leave</a>
+	          </li>
+
+            <li class="{{ Request::is('manage-management-leave') ? 'active' : '' }}">
+              <a href="/manage-management-leave">Manage My Leave</a>
+	          </li>
 
 	          <li class="{{ Request::is('view-leaves-mgt') ? 'active' : '' }}">
-              <a href="/view-leaves-mgt">Manage Leaves</a>
+              <a href="/view-leaves-mgt">Manage Employer Leave</a>
 	          </li>
 
               <li>

@@ -18,20 +18,35 @@
                     <form method="POST" action="/updateLeave">
                         @csrf
 
-                        <input type="text" name="id" value="{{ $data->id }}">
+                        <input type="hidden" name="id" value="{{ $data->id }}">
 
                         <div class="w-full">
-                            <x-label for="leave_type" value="Leave Type" />
-                            <select id="leave_type" name="leave_type" class="block mt-1 w-full" required>
+                            <x-label for="leave_type" value="{{ __('Leave Type') }}" />
+                            <select id="leave_type_select" name="leave_type" class="block mt-1 w-full">
                                 <option value="" disabled selected>Select Leave Type</option>
+                                @if(auth()->user()->category == 'internship')
+                                    <!-- Show Study/Training Leave as a priority option for interns -->
+                                    <option value="Study/Training Leave">Study/Training Leave</option>
+                                @endif
+                                <!-- Common leave options available to all users -->
+                                <option value="Casual Leave">Casual Leave</option>
                                 <option value="Annual Leave">Annual Leave</option>
-                                <option value="Sick Leave">Sick Leave</option>
+                                <option value="Medical Leave">Medical Leave</option>
                                 <option value="Maternity/Paternity Leave">Maternity/Paternity Leave</option>
-                                <option value="Family/Medical Leave">Family/Medical Leave</option>
-                                <option value="Bereavement Leave">Bereavement Leave</option>
-                                <option value="Unpaid Leave">Unpaid Leave</option>
-                                <option value="Study/Training Leave">Study/Training Leave</option>
+                                <option value="Work On Leave">Work On Leave</option>
+                                <option value="No Pay Leave">No Pay Leave</option>
+                                <!-- Include Study/Training Leave for non-interns if not already included -->
+                                @if(auth()->user()->category != 'internship')
+                                    <option value="Study/Training Leave">Study/Training Leave</option>
+                                @endif
+                                <option value="Other">Other</option>
                             </select>
+
+                        </div>
+
+                        <div class="mt-4" id="otherLeaveType" style="display: none;">
+                            <x-label for="other_leave_type" value="{{ __('Other Leave Type') }}" />
+                            <input type="text" id="other_leave_type" name="other_leave_type" class="block mt-1 w-full" placeholder="Enter Other Leave Type">
                         </div>
 
                         <div class="mt-4">
@@ -54,6 +69,16 @@
                             <textarea id="additional_notes" name="additional_notes" rows="4" cols="50" class="form-textarea mt-1 block w-full">{{ $data->additional_notes }}</textarea>
                         </div>
 
+                        <div class="mt-4">
+                            <x-label for="covering_person" value="{{ __('Covering Person') }}" />
+                            <select id="covering_person" name="covering_person" class="block mt-1 w-full">
+                                <option value="" disabled selected>Select Employee</option>
+                                @foreach($users as $user)
+                                    <option value="{{$user->id}}">{{$user->name}}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
                         <div class="flex items-center justify-end mt-4">
                             <x-button class="ml-4">
                                 {{ __('Update Request') }}
@@ -65,3 +90,17 @@
         </div>
     </div>
 </div>
+
+
+<script>
+
+// Add event listener to submit button
+document.getElementById('leave_type_select').addEventListener('change', function() {
+    var selectedValue = this.value;
+    if (selectedValue === 'Other') {
+        document.getElementById('otherLeaveType').style.display = 'block';
+    } else {
+        document.getElementById('otherLeaveType').style.display = 'none';
+    }
+});
+</script>

@@ -1,7 +1,7 @@
 
 <x-app-layout>
     <div class="flex">
-        <!-- Include the user sidebar -->
+        <!-- Include the management sidebar -->
         <x-management-sidebar />
 
         <div class="flex-1">

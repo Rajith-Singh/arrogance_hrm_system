@@ -18,7 +18,7 @@
                     <form method="POST" action="/updateUser">
                         @csrf
 
-                        <input type="text" name="id" value="{{ $user->id }}">
+                        <input type="hidden" name="id" value="{{ $user->id }}">
 
                         <div class="mt-4">
                             <x-label for="name" value="Name" />

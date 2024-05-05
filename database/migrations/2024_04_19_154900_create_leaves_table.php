@@ -19,6 +19,7 @@ return new class extends Migration
             $table->string('end_date');
             $table->string('reason');
             $table->string('additional_notes')->nullable();
+            $table->string('covering_person');
             $table->string('supervisor_approval');
             $table->string('management_approval');
             $table->timestamps();

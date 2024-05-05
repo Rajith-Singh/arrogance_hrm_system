@@ -23,9 +23,9 @@ route::get('/home', [HomeController::class, 'index']);
 
 // User (Employer) Routes
 
-Route::get('/request-leave', function () {
-    return view('emp-leave');
-});
+// Route::get('/request-leave', function () {
+//     return view('emp-leave');
+// });
 
 Route::post('/saveLeave',[LeaveController::class,'storeLeave']);
 
@@ -41,6 +41,7 @@ Route::get('/view-my-leaves',[LeaveController::class,'viewMyLeaves']);
 
 Route::get('/get-remaining-leaves',[LeaveController::class,'getRemainingLeaves']);
 
+Route::get('/request-leave', [LeaveController::class, 'getuser']);
 
 
 
@@ -78,6 +79,16 @@ Route::middleware(['role:supervisor'])->group(function () {
     Route::get('/view-emp-leave/{user_id}/{leave_id}', [LeaveController::class, 'viewEmpLeaveRequest']);
 
     Route::post('/update-supervisor-approval', [LeaveController::class, 'updateSupervisorApproval']);
+
+    Route::get('/request-supervisor-leave', [LeaveController::class, 'getSupuser']);
+
+    Route::post('/saveSupLeave',[LeaveController::class,'storeSupLeave']);
+
+    Route::get('/manage-supervisor-leave',[LeaveController::class,'viewSupLeaves']);
+
+    Route::get('/editSupLeave/{id}', [LeaveController::class, 'editSupLeave']);
+
+
 });
 
 // Routes accessible only to management
@@ -87,6 +98,16 @@ Route::middleware(['role:management'])->group(function () {
     Route::get('/view-mgt-leave/{user_id}/{leave_id}', [LeaveController::class, 'viewMgtLeaveRequest']);
 
     Route::post('/update-management-approval', [LeaveController::class, 'updateManagementApproval']);
+
+    Route::get('/request-management-leave', [LeaveController::class, 'getMgtUser']);
+
+    Route::post('/saveMgtLeave',[LeaveController::class,'storeMgtLeave']);
+
+    Route::get('/manage-management-leave',[LeaveController::class,'viewMgtLeaves']);
+
+    Route::get('/editMgtLeave/{id}', [LeaveController::class, 'editMgtLeave']);
+
+
 });
 
 
