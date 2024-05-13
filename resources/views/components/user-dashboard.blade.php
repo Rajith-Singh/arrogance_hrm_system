@@ -51,11 +51,47 @@
     
 </div>
 
-<table class="table table-responsive-sm table-hover">
+@if(auth()->user()->category == 'permanent') 
+    <table class="table table-responsive-sm table-hover">
         <thead class="thead-dark">
             <tr>
                 <th>Leave Type</th>
                 <th>Total Allocated</th>
+                <th>Allocated per month</th>
+                <th>Leaves Taken</th>
+                <th>Remaining Leaves</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if(!empty($remainingLeaves))
+                @foreach ($remainingLeaves as $type => $data)
+                    @php
+                        $allocated = $data['Total Allocated'];
+                        $taken = $data['Leaves Taken'];
+                        $rowClass = $allocated <= $taken ? 'text-danger' : '';
+                    @endphp
+                    <tr class="{{ $rowClass }}">
+                        <td>{{ $type }}</td>
+                        <td>{{ $allocated }}</td>
+                        <td>{{ $data['Allocated per month'] }}</td>
+                        <td>{{ $taken }}</td>
+                        <td>{{ $data['Remaining Leaves'] }}</td>
+                    </tr>
+                @endforeach
+            @else
+                <tr>
+                    <td colspan="5" class="text-center">No leave data available.</td>
+                </tr>
+            @endif
+        </tbody>
+    </table>
+@elseif(auth()->user()->category == 'internship')
+    <table class="table table-responsive-sm table-hover">
+        <thead class="thead-dark">
+            <tr>
+                <th>Leave Type</th>
+                <th>Total Allocated</th>
+                <th>Allocated per month</th>
                 <th>Leaves Taken</th>
                 <th>Remaining Leaves</th>
             </tr>
@@ -65,15 +101,17 @@
                 @foreach ($remainingLeaves as $type => $data)
                     <tr>
                         <td>{{ $type }}</td>
-                        <td>{{ $data['total'] }}</td>
-                        <td>{{ $data['taken'] }}</td>
-                        <td>{{ $data['remaining'] }}</td>
+                        <td>{{ $data['Total Allocated'] ?? 0 }}</td>
+                        <td>{{ $data['Allocated per month'] ?? 0 }}</td>
+                        <td>{{ $data['Leaves Taken'] ?? 0 }}</td>
+                        <td>{{ $data['Remaining Leaves'] ?? 0 }}</td>
                     </tr>
                 @endforeach
             @else
                 <tr>
-                    <td colspan="4" class="text-center">No leave data available.</td>
+                    <td colspan="5" class="text-center">No leave data available.</td>
                 </tr>
             @endif
         </tbody>
     </table>
+@endif

@@ -33,7 +33,7 @@
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             const userId = document.querySelector('meta[name="user-id"]').content;
-            const socket = io('http://localhost:3000', { query: { userId: userId } });
+            const socket = io('http://192.168.10.110:3000', { query: { userId: userId } });
 
             socket.on('notification', function(data) {
                 showPopup(data);

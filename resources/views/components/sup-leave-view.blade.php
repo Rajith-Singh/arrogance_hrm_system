@@ -92,9 +92,9 @@
                     <form method="POST" action="/update-supervisor-approval">
                         @csrf
 
-                        <input type="text" name="user_id" value="{{ $data->user_id }}" readonly>
+                        <input type="hidden" name="user_id" value="{{ $data->user_id }}" readonly>
 
-                        <input type="text" name="leave_id" value="{{ $data->id }}" readonly>
+                        <input type="hidden" name="leave_id" value="{{ $data->id }}" readonly>
 
                         <div class="w-full">
                             <x-label for="emp_name" value="Employer's Name" />

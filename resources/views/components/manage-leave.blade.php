@@ -51,6 +51,8 @@
                                         <a href="/editMgtLeave/{{$data->id}}" class="btn btn-warning btn-sm">Edit</a>
                                     @elseif(auth()->user()->usertype == 'admin')
                                         <a href="/editLeave/{{$data->id}}" class="btn btn-warning btn-sm">Edit</a>
+                                    @elseif(auth()->user()->usertype == 'hr')
+                                        <a href="/editLeave/{{$data->id}}" class="btn btn-warning btn-sm">Edit</a>
                                     @endif
                                     <form action="/deleteLeave/{{$data->id}}" method="POST" style="display: inline;">
                                         @csrf

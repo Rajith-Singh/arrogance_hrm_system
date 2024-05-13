@@ -27,19 +27,20 @@
                                     @if(auth()->user()->category == 'internship')
                                         <!-- Show Study/Training Leave as a priority option for interns -->
                                         <option value="Study/Training Leave">Study/Training Leave</option>
+                                        <option value="Half Day">Half Day</option>
+                                    @else
+                                        <!-- Common leave options available to all users -->
+                                        <option value="Casual Leave">Casual Leave</option>
+                                        <option value="Annual Leave">Annual Leave</option>
+                                        <option value="Medical Leave">Medical Leave</option>
+                                        <option value="Maternity/Paternity Leave">Maternity/Paternity Leave</option>
+                                        <option value="Work On Leave">Work On Leave</option>
+                                        <option value="No Pay Leave">No Pay Leave</option>
+                                        <option value="Half Day">Half Day</option>
+                                        <option value="Short Leave">Short Leave</option>
+                                        <option value="Other">Other</option>
                                     @endif
-                                    <!-- Common leave options available to all users -->
-                                    <option value="Casual Leave">Casual Leave</option>
-                                    <option value="Annual Leave">Annual Leave</option>
-                                    <option value="Medical Leave">Medical Leave</option>
-                                    <option value="Maternity/Paternity Leave">Maternity/Paternity Leave</option>
-                                    <option value="Work On Leave">Work On Leave</option>
-                                    <option value="No Pay Leave">No Pay Leave</option>
-                                    <!-- Include Study/Training Leave for non-interns if not already included -->
-                                    @if(auth()->user()->category != 'internship')
-                                        <option value="Study/Training Leave">Study/Training Leave</option>
-                                    @endif
-                                    <option value="Other">Other</option>
+                                    
                                 </select>
 
                             </div>

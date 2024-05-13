@@ -4,6 +4,8 @@ use Illuminate\Support\Facades\Route;
 
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\LeaveController;
+use Illuminate\Support\Facades\Mail;
+
 
 Route::get('/', function () {
     return view('welcome');
@@ -12,7 +14,7 @@ Route::get('/', function () {
 Route::middleware([
     'auth:sanctum',
     config('jetstream.auth_session'),
-    'verified',
+    // 'verified',
 ])->group(function () {
     Route::get('/dashboard', [HomeController::class, 'dashboard'])->name('dashboard');
 });
@@ -42,7 +44,6 @@ Route::get('/view-my-leaves',[LeaveController::class,'viewMyLeaves']);
 Route::get('/get-remaining-leaves',[LeaveController::class,'getRemainingLeaves']);
 
 Route::get('/request-leave', [LeaveController::class, 'getuser']);
-
 
 
 // // Supervisor Routes
@@ -111,6 +112,17 @@ Route::middleware(['role:management'])->group(function () {
 });
 
 
+
+// Routes accessible only to hr
+Route::middleware(['role:hr'])->group(function () {
+
+    Route::get('/add-leave-type', function () {
+        return view('hr.add-leave');
+    });
+
+    Route::post('/addLeave',[LeaveController::class,'addLeave']);
+
+});
 
 
 

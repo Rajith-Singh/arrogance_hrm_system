@@ -2,7 +2,7 @@
 <div>
     <nav>
         <ul>
-            <li><a href="{{ route('supervisor.dashboard') }}">Supervisor Dashboard</a></li>
+            <li><a href="/home">Supervisor Dashboard</a></li>
             <!-- Add more links specific to supervisor role if needed -->
         </ul>
     </nav>

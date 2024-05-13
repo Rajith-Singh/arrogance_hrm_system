@@ -37,6 +37,7 @@
                                 <option value="admin">Admin</option>
                                 <option value="supervisor">Supervisor</option>
                                 <option value="management">Management</option>
+                                <option value="hr">HR</option>
                                 <option value="user">Normal User</option>
                             </select>
                         </div>
@@ -45,7 +46,7 @@
                             <x-label for="category" value="Category" />
                             <select id="category" name="category" class="block mt-1 w-full">
                                 <option value="not set" disabled selected>Select Category</option>
-                                <option value="permeant">Permeant</option>
+                                <option value="permanent">Permanent</option>
                                 <option value="probation">Probation</option>
                                 <option value="contract">Contract</option>
                                 <option value="internship">Internship</option>
