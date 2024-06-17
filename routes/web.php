@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\LeaveController;
+use App\Http\Controllers\AttendanceController;
 use Illuminate\Support\Facades\Mail;
 
 
@@ -18,6 +19,29 @@ Route::middleware([
 ])->group(function () {
     Route::get('/dashboard', [HomeController::class, 'dashboard'])->name('dashboard');
 });
+
+
+Route::get('/test-db-connection', function () {
+    $serverName = ".";
+    $connectionInfo = array("Database" => "arrogance_db", "UID" => "sa", "PWD" => "error404@PHP");
+    $conn = sqlsrv_connect($serverName, $connectionInfo);
+
+    if ($conn) {
+        return "Connection established.<br />";
+    } else {
+        return "Connection could not be established.<br />" . print_r(sqlsrv_errors(), true);
+    }
+});
+
+
+
+Route::get('/check-late-count/{employeeId}', [AttendanceController::class, 'checkCount']);
+
+Route::get('/track-attendance', function () {
+    return view('view-attendance');
+});
+
+Route::get('/attendance-tracking', [AttendanceController::class, 'checkAttendance']);
 
 
 
@@ -44,6 +68,8 @@ Route::get('/view-my-leaves',[LeaveController::class,'viewMyLeaves']);
 Route::get('/get-remaining-leaves',[LeaveController::class,'getRemainingLeaves']);
 
 Route::get('/request-leave', [LeaveController::class, 'getuser']);
+
+
 
 
 // // Supervisor Routes
@@ -121,6 +147,19 @@ Route::middleware(['role:hr'])->group(function () {
     });
 
     Route::post('/addLeave',[LeaveController::class,'addLeave']);
+
+    Route::get('/add-attendance', function () {
+        return view('hr.add-attendance');
+    });
+
+    Route::post('/upload-attendance', [AttendanceController::class, 'uploadAttendance']);
+
+    // Route::get('/track-attendance', function () {
+    //     return view('view-attendance');
+    // });
+
+    // Route::get('/attendance-tracking', [AttendanceController::class, 'checkAttendance'])->name('attendance.tracking');
+
 
 });
 

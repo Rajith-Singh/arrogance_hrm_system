@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\View; // Import the View facade
 use Illuminate\Support\Facades\DB; 
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
-
+use Carbon\Carbon;
 
 
 
@@ -139,12 +139,15 @@ class LeaveController extends Controller
 
         $leaves = Leave::join('users', 'users.id', '=', 'leaves.user_id')
                     ->select('users.name',
+                            'users.department',
                             'leaves.id',
                             'leaves.user_id',
                             'leaves.leave_type', 
                             'leaves.supervisor_approval', 
                             'leaves.management_approval', 
                             )
+                    ->where('users.department', auth()->user()->department)
+                    ->where('users.usertype', 'user')
                     ->get();
         $manageLeavesView = View::make('components.sup-get-leave', ['leave' => $leaves])->render(); // Render the manage-leave view
         return view('supervisor.sup-manage-leave', ['manageLeavesView' => $manageLeavesView]);
@@ -189,7 +192,7 @@ class LeaveController extends Controller
             ];
     
             // Emit notification event for approval
-            Http::post('http://192.168.10.110:3000/notify', $data);
+            Http::post('http://192.168.10.116:3001/notify', $data);
         } else if ($request->approval_status === 'Rejected') {
             $user = User::find($request->user_id);
             $supervisor_name = auth()->user()->name;
@@ -199,7 +202,7 @@ class LeaveController extends Controller
             ];
     
             // Emit notification event for rejection
-            Http::post('http://192.168.10.110:3000/notify', $data);
+            Http::post('http://192.168.10.116:3001/notify', $data);
         }
     
         return redirect()->to('/view-leaves')->with('message', 'Leave status successfully updated!');
@@ -262,7 +265,7 @@ class LeaveController extends Controller
             ];
     
             // Emit notification event for approval
-            Http::post('http://192.168.10.110:3000/notify', $data);
+            Http::post('http://192.168.10.116:3001/notify', $data);
         } else if ($request->approval_status === 'Rejected') {
             $user = User::find($request->user_id);
             $manager_name = auth()->user()->name;
@@ -272,7 +275,7 @@ class LeaveController extends Controller
             ];
     
             // Emit notification event for rejection
-            Http::post('http://192.168.10.110:3000/notify', $data);
+            Http::post('http://192.168.10.116:3001/notify', $data);
         }
     
         return redirect()->to('/view-leaves-mgt')->with('message', 'Leave status successfully updated!');
@@ -330,34 +333,8 @@ class LeaveController extends Controller
         return redirect()->to('/view-users')->with('message', 'User role successfully updated!');
     }
     
-    public function getRemainiffngLeaves(Request $request){
 
-        $leaves = LeaveType::join('leaves', 'leaves.leave_type', '=', 'leave_types.leave_type')
-                            ->join('users', 'users.category', '=', 'leave_types.category')
-                            ->select(
-                                'leaves.id',
-                                'leaves.user_id',
-                                'leaves.leave_type',
-                                'leaves.start_date',
-                                'leaves.end_date',
-                                'leaves.reason',
-                                'leaves.additional_notes',
-                                'leaves.supervisor_approval',
-                                'leaves.supervisor_note',
-                                'leaves.management_approval',
-                                'leaves.management_note',
-                                'users.category',
-                                'users.id',
-                                'leave_types.leave_type',
-                                'leave_types.category',
-                            )
-                            ->where('leaves.user_id', auth()->user()->id)
-                            ->where('leaves.user_id', auth()->user()->category)
-                            ->where('leaves.user_id', auth()->user()->category)
-                            ->where('leaves.leave_type',"leave_types.leave_type")
-                            ->where('leaves.management_approval',"Approved")
-                            ->get();
-    }
+///////////////////////////////////////////////Leave Calculator///////////////////////////////////////////////////////////
 
 
     public function getRemainingLeaves(Request $request)
@@ -368,8 +345,8 @@ class LeaveController extends Controller
         // Ensure category matches exactly as in the database (consider trimming and case sensitivity)
         $userCategory = trim(strtolower($userCategory));
 
-        // Special handling for interns
-        if ($userCategory === 'internship') {
+        // Special handling for interns and probation employees
+        if (($userCategory === 'internship') || ($userCategory === 'probation')) {
             // Call the function specific to internship and return its results immediately
             return $this->getInternshipRemainingLeave($request);
         }
@@ -409,15 +386,17 @@ class LeaveController extends Controller
                 $shortLeaveTakenPerMonth[$yearMonth] += $daysTaken;
             }
     
+            $HALFDAYDEDUCTION = 0.5;
             if ($type === 'Half Day') {
                 // For Half Days, calculate half-day deductions to casual leaves
-                $halfDayDeductions = $daysTaken * 0.5; // Each half day is 0.5 days of casual leave
+                $halfDayDeductions = $daysTaken * $HALFDAYDEDUCTION; // Each half day is 0.5 days of casual leave
             } elseif ($type === 'Short Leave') {
                 // For Short Leaves, check if the monthly quota is exceeded
-                if ($shortLeaveTakenPerMonth[$yearMonth] > 2) { // User can get 2 Short Leaves per month
+                $SHORTLEAVELIMIT = 2;
+                if ($shortLeaveTakenPerMonth[$yearMonth] > $SHORTLEAVELIMIT) { // User can get 2 Short Leaves per month
                     // Deduct exceeded Short Leaves from Casual Leave
-                    $exceededShortLeaves = $shortLeaveTakenPerMonth[$yearMonth] - 2;
-                    $halfDayDeductions += $exceededShortLeaves * 0.5; // Assuming each exceeded Short Leave deducts 0.5 Casual Leave
+                    $exceededShortLeaves = $shortLeaveTakenPerMonth[$yearMonth] - $SHORTLEAVELIMIT;
+                    $halfDayDeductions += $exceededShortLeaves * $HALFDAYDEDUCTION; // Assuming each exceeded Short Leave deducts 0.5 Casual Leave
                 }
             } else {
                 // For all other leave types including Casual Leave
@@ -453,51 +432,97 @@ class LeaveController extends Controller
         return $remainingLeaves; // Return $remainingLeaves
     }
     
+
+    // public function showRemainingLeaves()
+    // {
+    //     $userCategory = trim(strtolower(auth()->user()->category));
+    //     $remainingLeaves = [];
     
+    //     if ($userCategory === 'internship') {
+    //         $remainingLeaves = $this->getInternshipRemainingLeave(request());
+    //     } else {
+    //         $remainingLeaves = $this->getRemainingLeaves(request());
+    //     }
     
-    
-    
-    
+    //     return view('dashboard', [
+    //         'remainingLeaves' => $remainingLeaves,
+    //         'userCategory' => $userCategory
+    //     ]);
+    // }
     
 
-
-
+    public function showRemainingLeaves()
+{
+    $userCategory = trim(strtolower(auth()->user()->category));
+    $remainingLeaves = [];
     
-    
-    
-    public function showRemainingLeaves() {
-        $remainingLeaves = $this->getRemainingLeaves(request()); // Fetch data
-        $remainingLeavesView = View::make('components.user-dashboard', ['remainingLeaves' => $remainingLeaves])->render();
-        return view('dashboard', ['remainingLeavesView' => $remainingLeavesView]);
+    if ($userCategory === 'internship') {
+        $remainingLeaves = $this->getInternshipRemainingLeave(request());
+    } else {
+        $remainingLeaves = $this->getRemainingLeaves(request());
     }
 
-
+    // Dump the $remainingLeaves variable to check its contents
+    // dd($remainingLeaves);
     
+    return view('hr.home', [
+        'remainingLeaves' => $remainingLeaves,
+        'userCategory' => $userCategory
+    ]);
+}
+
+
 
     public function getInternshipRemainingLeave(Request $request)
     {
         $userId = auth()->user()->id;
+        
     
         // Define the current month's start and end dates
         $monthStart = date('Y-m-01');
         $monthEnd = date('Y-m-t');
     
-        // Fetch all approved half-day leaves for the intern within the current month
-        $halfDaysTaken = Leave::where('user_id', $userId)
+
+        // Fetch all approved half-day leaves for the user within the specified date range
+        $halfDayLeaves = Leave::where('user_id', $userId)
             ->where('leave_type', 'Half Day')
             ->whereBetween('start_date', [$monthStart, $monthEnd])
             ->where('management_approval', 'Approved')
             ->where('supervisor_approval', 'Approved')
-            ->count();
+            ->get();
+
+        // Initialize a counter for the number of half days
+        $totalHalfDays = 0;
+
+        // Iterate through each leave record
+        foreach ($halfDayLeaves as $leave) {
+            // Convert start_date and end_date to Carbon instances
+            $startDate = Carbon::parse($leave->start_date);
+            $endDate = Carbon::parse($leave->end_date);
+
+            // Calculate the number of half days for this leave period
+            // If start_date and end_date are the same, count it as 1 half day
+            if ($startDate->equalTo($endDate)) {
+                $totalHalfDays += 1;
+            } else {
+                // Otherwise, calculate the number of days in the period and count each as a half day
+                $daysCount = $startDate->diffInDays($endDate);
+                $totalHalfDays += $daysCount;
+            }
+        }
+
     
         // Interns are allowed 1 half-day leave per month
-        $halfDayLimit = 1;
+        $HALFDAYLIMIT = 1;
+
+        $halfDayLimit = $HALFDAYLIMIT;
+        // dd($halfDaysTaken);
     
-        if ($halfDaysTaken > $halfDayLimit) {
+        if ($totalHalfDays > $halfDayLimit) {
             // If the limit is exceeded, return "No Pay" for the month
             return [
                 'Leave Type' => 'Half Day',
-                'Leaves Taken' => $halfDaysTaken,
+                'Leaves Taken' => $totalHalfDays,
                 'Remaining Leaves' => 0,
                 'Status' => 'No Pay'
             ];
@@ -505,90 +530,18 @@ class LeaveController extends Controller
             // Otherwise, calculate remaining leaves
             return [
                 'Leave Type' => 'Half Day',
-                'Leaves Taken' => $halfDaysTaken,
-                'Remaining Leaves' => $halfDayLimit - $halfDaysTaken,
+                'Leaves Taken' => $totalHalfDays,
+                'Remaining Leaves' => $halfDayLimit - $totalHalfDays,
                 'Status' => 'Normal'
             ];
         }
     }
 
 
-
-
-    // public function calculateUserLeaves()
-    // {
-    //     try {
-    //         // Get the logged-in user's category
-    //         $userCategory = auth()->user()->category;
-
-    //         // Use caching to reduce database load
-    //         $cacheKey = 'leave_types_' . $userCategory;
-    //         $leaveTypes = Cache::remember($cacheKey, 60, function () use ($userCategory) {
-    //             // Fetch leave types available for this category from the database
-    //             return LeaveType::where('category', $userCategory)->get();
-    //         });
-
-    //         $leaveData = [];
-
-    //         // Determine Casual Leave count for Half Day calculations (if not an intern)
-    //         $casualLeaveCount = null;
-    //         if ($userCategory != 'internship') {
-    //             $casualLeave = $leaveTypes->firstWhere('leave_type', 'Casual');
-    //             if ($casualLeave) {
-    //                 $casualLeaveCount = $casualLeave->count / 2; // Half of the Casual leave count
-    //             }
-    //         }
-
-    //         foreach ($leaveTypes as $leaveType) {
-    //             // For each leave type, calculate the available leaves
-    //             if ($leaveType->leave_type == 'Half Day') {
-    //                 if ($userCategory == 'internship') {
-    //                     // Interns calculate Half Day based on count per month
-    //                     $currentMonth = now()->month;
-    //                     $availableLeaves = $currentMonth * $leaveType->count_per_month;
-    //                 } else {
-    //                     // Other categories consider Half Day as half a Casual Leave
-    //                     $availableLeaves = $casualLeaveCount;
-    //                 }
-    //             } else {
-    //                 // For other leave types, use the default count
-    //                 $availableLeaves = $leaveType->count;
-    //             }
-
-    //             $leaveData[] = [
-    //                 'leave_type' => $leaveType->leave_type,
-    //                 'available_leaves' => $availableLeaves
-    //             ];
-    //         }
-
-    //         return $leaveData;
-    //     } catch (\Exception $e) {
-    //         // Log the error for further investigation
-    //         Log::error('Failed to calculate leaves: ' . $e->getMessage());
-
-    //         // Return an empty array or a specific error structure if preferred
-    //         return [
-    //             'error' => 'An error occurred while calculating leaves.'
-    //         ];
-    //     }
-    // }
-
-    // public function showAdminDashboard()
-    // {
-    //     $leaveData = $this->calculateUserLeaves();
-    //     \Log::info('Leave Data:', $leaveData);  // Check Laravel log to see the output.
-    
-    //     return view('admin.home', ['leaveData' => $leaveData]);
-    // }
-
-
-
-//Option 3  Leave Calculator
-
-
     public function showLeaveEntitlement()
     {
         $leaveEntitlement = $this->calculateLeaveEntitlement();
+
 
         $remainingLeavesView = View::make('components.user-dashboard', ['leaveEntitlement' => $leaveEntitlement])->render();
 
@@ -662,33 +615,19 @@ class LeaveController extends Controller
 
 
 
-
-
-
-
-
-//
-
-
-
-
-
-
-
-
-
-
-
+/////////////////////////////////////////////////End Leave Calculator////////////////////////////////////////////////////
 
     
 
-    // public function getuser() {
-    //     $users = User::all()->where('category',auth()->user()->category)->where('name','<>',auth()->user()->name);
-    //     $viewUsers = View::make('components.request-leave', ['users' => $users])->render(); // Render
-    //     return view('emp-leave', ['viewUsers' => $viewUsers, 'users' => $users]);
-    // }
 
-    // Fetch users, excluding management and the current user
+
+
+
+
+
+
+
+
     private function fetchUsers() {
         return User::where('usertype', '<>', 'management')
                     ->where('name', '<>', auth()->user()->name)
@@ -697,20 +636,20 @@ class LeaveController extends Controller
 
 
     public function getuser() {
-        $users = $this->fetchUsers();
+        $users = $this->fetchUsers()->where('department', auth()->user()->department);
         $viewUsers = View::make('components.request-leave', ['users' => $users])->render(); // Render
         return view('emp-leave', ['viewUsers' => $viewUsers, 'users' => $users]);
     }
 
 
     public function getSupuser() {
-        $users = $this->fetchUsers();
+        $users = $this->fetchUsers()->where('department', auth()->user()->department);
         $viewSupUsers = View::make('components.sup-request-leave', ['users' => $users])->render(); // Render
         return view('supervisor.sup-leave', ['viewSupUsers' => $viewSupUsers, 'users' => $users]);
     }
 
     public function getMgtUser() {
-        $users = $this->fetchUsers();
+        $users = $this->fetchUsers()->where('department', auth()->user()->department);
         $viewMgtUsers = View::make('components.mgt-request-leave', ['users' => $users])->render(); // Render
         return view('management.mgt-leave', ['viewMgtUsers' => $viewMgtUsers, 'users' => $users]);
     }

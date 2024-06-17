@@ -23,7 +23,7 @@
 	          <li>
 
             <li class="{{ Request::is('register') ? 'active' : '' }}">
-                <a href="{{ route('register') }}">Register Users</a>
+                <a href="/add-attendance">Add Attendance</a>
             </li>
 
             <li class="{{ Request::is('add-leave-type') ? 'active' : '' }}">

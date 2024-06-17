@@ -26,6 +26,10 @@ class HomeController extends Controller
             // Redirect to the dashboard route
             return redirect()->route('dashboard');
         }
+        else if (Auth::user()->usertype === 'hr') {
+            $remainingLeaves = $this->leaveController->getRemainingLeaves(request());
+            $userData['remainingLeaves'] = $remainingLeaves;
+        }
 
         return view($this->getViewForUserType(), $userData);
     }
@@ -53,9 +57,15 @@ class HomeController extends Controller
             case 'management':
                 return 'management.home';
             case 'hr':
-                return 'hr.home';
+                return ('hr.home');
             default:
                 return 'dashboard'; // Fallback for 'user' and any other types
         }
+    }
+
+    // Method to fetch remaining leaves for regular users
+    private function getRemainingLeaves()
+    {
+        return $this->leaveController->showRemainingLeaves();
     }
 }
