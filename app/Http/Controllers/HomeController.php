@@ -29,6 +29,9 @@ class HomeController extends Controller
         else if (Auth::user()->usertype === 'hr') {
             $remainingLeaves = $this->leaveController->getRemainingLeaves(request());
             $userData['remainingLeaves'] = $remainingLeaves;
+        } else if (Auth::user()->usertype === 'supervisor') {
+            $remainingLeaves = $this->leaveController->getRemainingLeaves(request());
+            $userData['remainingLeaves'] = $remainingLeaves;
         }
 
         return view($this->getViewForUserType(), $userData);

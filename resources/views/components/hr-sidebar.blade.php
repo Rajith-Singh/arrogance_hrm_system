@@ -22,28 +22,48 @@
                 </li>
 	          <li>
 
-            <li class="{{ Request::is('register') ? 'active' : '' }}">
+            <li class="{{ Request::is('add-attendance') ? 'active' : '' }}">
                 <a href="/add-attendance">Add Attendance</a>
+            </li>
+
+            <li class="{{ Request::is('view-emp-attendance') ? 'active' : '' }}">
+                <a href="/view-emp-attendance">Edit Attendance</a>
+            </li>
+
+            <li class="{{ Request::is('add-manual-attendance') ? 'active' : '' }}">
+                <a href="/add-manual-attendance">Add Attendance (Manual) </a>
             </li>
 
             <li class="{{ Request::is('add-leave-type') ? 'active' : '' }}">
                 <a href="/add-leave-type">Add Leave Type</a>
             </li>
 
+            <li class="{{ Request::is('edit-delete-leave') ? 'active' : '' }}">
+              <a href="/edit-delete-leave">Edit/Delete Leave</a>
+	        </li>
+
             <li class="#">
               <a href="#">Manage Special Leave</a>
 	        </li>
+
+            <li class="{{ Request::is('reports') ? 'active' : '' }}">
+                <a href="/reports">Report</a>
+            </li>
+
+            <li class="{{ Request::is('add-holiday') ? 'active' : '' }}">
+                <a href="/add-holiday">Add Holiday</a>
+            </li>
 
             <li class="{{ Request::is('request-leave') ? 'active' : '' }}">
                 <a href="/request-leave">Request Leave</a>
             </li>
                 
             <li class="{{ Request::is('manage-leave') ? 'active' : '' }}">
-                <a href="/manage-leave">Manage Leaves</a>
+                <a href="/manage-leave">Manage My Leaves</a>
             </li>
                 
-            <li>
-                <a href="#">Attendance Tracking</a>
+            <li class="{{ Request::is('track-attendance') ? 'active' : '' }}">
+                    <a href="/track-attendance">My Attendance Tracking</a>
             </li>
 
 	        <li class="{{ Request::is('view-my-leaves') ? 'active' : '' }}">

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Leave;
 use App\Models\User;
+use App\Models\Holiday;
 use App\Models\LeaveType;
 use App\Models\Attendance;
 use Illuminate\Support\Facades\View; 
@@ -14,9 +15,34 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
+use App\Services\DateService;
+use PDF;
 
 class AttendanceController extends Controller
 {
+
+    public function create()
+    {
+        return view('example');
+    }
+
+    public function store(Request $request)
+    {
+        $request->validate([
+            'holiday_date' => 'required|date',
+            'description' => 'nullable|string|max:255',
+        ]);
+
+        Holiday::create([
+            'holiday_date' => $request->holiday_date,
+            'description' => $request->description,
+        ]);
+
+        return back()->with('success', 'Holiday added successfully.');
+    }
+
+
+
     // public function uploadAttendance(Request $request)
     // {
     //     $request->validate([
@@ -307,7 +333,13 @@ class AttendanceController extends Controller
         return redirect()->back()->with('message', 'Attendance data processed successfully.');
     }
     
-    private function handleLateComings($attendance)
+
+
+    ////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+    private function handleLateComingsOLD($attendance)
     {
         $officeStartTime = Carbon::createFromTime(8, 30);
         $lateStartTime = Carbon::createFromTime(8, 31);
@@ -331,8 +363,9 @@ class AttendanceController extends Controller
                 ->whereYear('date', $currentYear)
                 ->count();
     
+            $NOOFLATECOMINGS = 2;
             // Check for late comings exceeding 3
-            if ($lateCount > 3) {
+            if ($lateCount > $NOOFLATECOMINGS) {
                 $this->createLeave($attendance->employee_id, $attendance->date, 'Half Day');
             } else {
                 // Check if the employee didn't cover the time by staying until the extended end time
@@ -352,6 +385,67 @@ class AttendanceController extends Controller
             $this->createLeave($attendance->employee_id, $attendance->date, 'Half Day');
         }
     }
+
+    ////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+    private function handleLateComings($attendance)
+    {
+        $officeStartTime = Carbon::createFromTime(8, 30);
+        $lateStartTime = Carbon::createFromTime(8, 31);
+        $lateEndTime = Carbon::createFromTime(8, 46);
+        $halfDayTime = Carbon::createFromTime(12, 31);
+        
+        $date = Carbon::parse($attendance->date);
+        $checkIn = Carbon::parse($attendance->check_in);
+        $checkOut = Carbon::parse($attendance->check_out);
+        
+        $currentMonth = $date->month;
+        $currentYear = $date->year;
+
+        if ($checkIn->between($lateStartTime, $lateEndTime)) {
+            // Count late comings for the current month and year
+            $lateCount = Attendance::where('employee_id', $attendance->employee_id)
+                ->whereTime('check_in', '>=', $lateStartTime->toTimeString())
+                ->whereTime('check_in', '<=', $lateEndTime->toTimeString())
+                ->whereMonth('date', $currentMonth)
+                ->whereYear('date', $currentYear)
+                ->count();
+
+            $NOOFLATECOMINGS = 2;
+            // Check for late comings exceeding the allowed limit
+            if ($lateCount >= $NOOFLATECOMINGS) {
+                $this->createLeave($attendance->employee_id, $attendance->date, 'Half Day');
+            } else {
+                // Calculate the actual late minutes
+                $lateMinutes = $checkIn->diffInMinutes($officeStartTime);
+                $requiredCheckOutTime = Carbon::createFromTime(17, 0)->addMinutes($lateMinutes);
+                
+                // Check if the employee didn't cover the actual late minutes
+                if ($checkOut->lt($requiredCheckOutTime)) {
+                    $this->createLeave($attendance->employee_id, $attendance->date, 'Half Day');
+                }
+            } 
+        }
+
+        // Check if the employee comes between 8:46 AM to 12:31 PM
+        if ($checkIn->between($lateEndTime, $halfDayTime)) {
+            $this->createLeave($attendance->employee_id, $attendance->date, 'Half Day');
+        }
+
+        // Check if the employee comes after 12:31 PM
+        if ($checkIn->gt($halfDayTime)) {
+            $this->createLeave($attendance->employee_id, $attendance->date, 'Casual Leave');
+        }
+    }
+
+
+
+
+
     
     // private function createLeave($employeeId, $date, $type)
     // {
@@ -457,6 +551,205 @@ class AttendanceController extends Controller
         $attendanceRecords = $query->get();
 
         return response()->json($attendanceRecords);
+    }
+
+    public function updateCheckOut(Request $request, $id)
+    {
+        $attendance = Attendance::find($id);
+        $attendance->real_check_in = $request->input('check_in');
+        $attendance->real_check_out = $request->input('check_out');
+        $attendance->save();
+
+        return response()->json(['success' => true]);
+    }
+
+    public function checkEmpAttendance(Request $request)
+    {
+        $employeeId = $request->query('employee_id');
+        $startDate = $request->query('start_date');
+        $endDate = $request->query('end_date');
+
+        $query = Attendance::where('employee_id', $employeeId);
+
+        if ($startDate) {
+            $query->where('date', '>=', $startDate);
+        }
+
+        if ($endDate) {
+            $query->where('date', '<=', $endDate);
+        }
+
+        $attendanceRecords = $query->get();
+
+        return response()->json($attendanceRecords);
+    }
+
+
+///////////////////////////////////
+
+
+    public function attendanceReport(Request $request)
+    {
+        $request->validate([
+            'employee_id' => 'required|numeric|exists:users,emp_no', // Ensure emp_id exists in users table',
+        ]);
+
+        $employeeId = $request->input('employee_id');
+        $startDate = $request->input('start_date');
+        $endDate = $request->input('end_date');
+
+        $query = Attendance::where('employee_id', $employeeId);
+
+        if ($startDate) {
+            $query->where('date', '>=', $startDate);
+        }
+
+        if ($endDate) {
+            $query->where('date', '<=', $endDate);
+        }
+
+        $attendanceRecords = $query->get();
+        $employee = Attendance::join('users', 'users.emp_no', '=', 'attendances.employee_id')
+                                ->where('attendances.employee_id', $employeeId)
+                                ->select('users.name', 'users.emp_no')
+                                ->first();
+
+        $employeeName = str_replace(' ', '_', $employee->name);
+        $fileName = "{$employee->emp_no}_{$employeeName}_attendance_report.pdf";
+
+        $pdf = PDF::loadView('reports.attendance-report', [
+            'records' => $attendanceRecords,
+            'employee' => $employee
+        ]);
+
+        return $pdf->download($fileName);
+    }
+
+    public function leaveReport(Request $request)
+    {
+
+        $request->validate([
+            'employee_id' => 'required|numeric|exists:users,emp_no', // Ensure emp_id exists in users table',
+        ]);
+
+        $employeeId = $request->input('employee_id');
+        $startDate = $request->input('start_date');
+        $endDate = $request->input('end_date');
+
+        $query = Leave::where('user_id', $employeeId);
+
+        if ($startDate) {
+            $query->where('start_date', '>=', $startDate);
+        }
+
+        if ($endDate) {
+            $query->where('end_date', '<=', $endDate);
+        }
+
+        $leaveRecords = $query->get();
+
+        $employee = Attendance::join('users', 'users.emp_no', '=', 'attendances.employee_id')
+                                ->where('attendances.employee_id', $employeeId)
+                                ->select('users.name', 'users.emp_no')
+                                ->first();
+
+        // dd($employee);
+
+        $employeeName = str_replace(' ', '_', $employee->name);
+        $fileName = "{$employee->emp_no}_{$employeeName}_leave_report.pdf";
+
+
+        $pdf = PDF::loadView('reports.leave-report', [
+            'records' => $leaveRecords,
+            'employee' => $employee
+        ]);
+
+        return $pdf->download($fileName);
+    }
+
+    public function attendanceSummaryReport(Request $request)
+    {
+        $startDate = $request->input('start_date');
+        $endDate = $request->input('end_date');
+
+        $query = Attendance::query();
+
+        if ($startDate) {
+            $query->where('date', '>=', $startDate);
+        }
+
+        if ($endDate) {
+            $query->where('date', '<=', $endDate);
+        }
+
+        $attendanceSummary = $query->get();
+        $logo = asset('images/logo.png');
+
+        $pdf = PDF::loadView('reports.attendance-report', [
+            'records' => $attendanceSummary,
+            'logo' => $logo
+        ]);
+
+        $fileName = "attendance_summary_report.pdf";
+
+        return $pdf->download($fileName);
+    }
+
+
+    public function leaveSummaryReport(Request $request)
+    {
+        $startDate = $request->input('start_date');
+        $endDate = $request->input('end_date');
+
+        $query = Leave::query();
+
+        if ($startDate) {
+            $query->where('start_date', '>=', $startDate);
+        }
+
+        if ($endDate) {
+            $query->where('end_date', '<=', $endDate);
+        }
+
+        $leaveSummary = $query->get();
+        $logo = asset('images/logo.png');
+
+        $pdf = PDF::loadView('reports.leave-report', [
+            'records' => $leaveSummary,
+            'logo' => $logo
+        ]);
+
+        $fileName = "leave_summary_report.pdf";
+
+        return $pdf->download($fileName);
+    }
+
+
+    public function storeManualAttendance(Request $request)
+    {
+        $request->validate([
+            'emp_id' => 'required|numeric|exists:users,emp_no', // Ensure emp_id exists in users table',
+            'date' => 'required', // Add validation for other_leave_type
+            'check_in' => 'required',
+            'check_out' => 'required',
+            'verify_code' => 'required',
+        ]);
+    
+        $attendance = new Attendance;
+    
+        $attendance->employee_id = $request->emp_id;
+        $attendance->date = $request->date;
+        $attendance->check_in = $request->check_in;
+        $attendance->check_out = $request->check_out;
+        $attendance->real_check_in = $request->check_in;
+        $attendance->real_check_out = $request->check_out;
+        $attendance->verify_code = $request->verify_code;
+        $attendance->updated_by = auth()->user()->id;
+    
+
+        $attendance->save();
+    
+        return back()->with('msg', 'Manual attendance has been successfully added.');
     }
 
 

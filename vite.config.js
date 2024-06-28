@@ -12,8 +12,8 @@ export default defineConfig({
     host: '0.0.0.0', // Bind to all network interfaces
     port: 5000, // Port number
     hmr: {
-      host: '192.168.246.93', // Replace with your public IP or domain if accessible
-      port: 3000,
+      host: 'localhost', // Replace with your public IP or domain if accessible
+      port: 3001,
     },
   },
 });

@@ -5,6 +5,8 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\LeaveController;
 use App\Http\Controllers\AttendanceController;
+use App\Http\Controllers\NotificationController;
+
 use Illuminate\Support\Facades\Mail;
 
 
@@ -68,6 +70,15 @@ Route::get('/view-my-leaves',[LeaveController::class,'viewMyLeaves']);
 Route::get('/get-remaining-leaves',[LeaveController::class,'getRemainingLeaves']);
 
 Route::get('/request-leave', [LeaveController::class, 'getuser']);
+
+// Define the routes for notifications
+Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications');
+Route::get('/notifications/unread-count', [NotificationController::class, 'getUnreadNotificationCount']);
+Route::post('/notifications/mark-all-as-read', [NotificationController::class, 'markAllAsRead'])->name('notifications.markAllAsRead');
+
+
+
+
 
 
 
@@ -160,9 +171,42 @@ Route::middleware(['role:hr'])->group(function () {
 
     // Route::get('/attendance-tracking', [AttendanceController::class, 'checkAttendance'])->name('attendance.tracking');
 
+    Route::get('/view-emp-attendance', function () {
+        return view('hr.view-emp-attendance');
+    });
+
+    Route::get('/emp-attendance-tracking', [AttendanceController::class, 'checkEmpAttendance']);
+
+    Route::post('/update-checkout/{id}', [AttendanceController::class, 'updateCheckOut']);
+
+    Route::get('/reports', function () {
+        return view('hr.reports');
+    });
+
+    Route::get('/add-manual-attendance', function () {
+        return view('hr.add-manual-attendance');
+    });
+
+    Route::get('/edit-delete-leave', function () {
+        return view('hr.edit-delete-leave-manual');
+    });
+
+    Route::post('/saveManualAttendance',[AttendanceController::class,'storeManualAttendance']);
+
+    Route::post('/attendance-report', [AttendanceController::class, 'attendanceReport']);
+    Route::post('/attendance-summary-report', [AttendanceController::class, 'attendanceSummaryReport']);
+    Route::post('/leave-report', [AttendanceController::class, 'leaveReport']);
+    Route::post('/leave-summary-report', [AttendanceController::class, 'leaveSummaryReport']);
+
+
+    Route::post('/leaves/search', [LeaveController::class, 'search'])->name('leaves.search');
+    Route::post('/leaves/{id}/update', [LeaveController::class, 'update'])->name('leaves.update');
+    Route::delete('/leaves/{id}', [LeaveController::class, 'destroy'])->name('leaves.destroy');
+
+    Route::get('/add-holiday', [AttendanceController::class, 'create'])->name('example.create');
+    Route::post('/add-holiday', [AttendanceController::class, 'store'])->name('example.store');
 
 });
-
 
 
 

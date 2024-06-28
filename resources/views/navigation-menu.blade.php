@@ -1,4 +1,5 @@
 <nav x-data="{ open: false }" class="bg-white border-b border-gray-100">
+    <meta name="user-id" content="{{ auth()->user()->id }}">
     <!-- Primary Navigation Menu -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between h-16">
@@ -19,7 +20,16 @@
             </div>
 
             <div class="hidden sm:flex sm:items-center sm:ms-6">
-                <!-- Teams Dropdown -->
+                <!-- Notification Bell -->
+                <div class="relative ms-3">
+                    <a href="{{ route('notifications') }}" class="text-gray-500 hover:text-gray-700 focus:outline-none focus:text-gray-700">
+                        <i class="fas fa-bell fa-lg"></i>
+                        <span id="notificationCount" class="absolute top-0 right-0 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-red-100 bg-red-600 rounded-full">0</span>
+                    </a>
+                </div>
+
+                <!-- User Info and Settings Dropdown -->
+                <div class="ms-3">{{ Auth::user()->name }}</div>
                 @if (Laravel\Jetstream\Jetstream::hasTeamFeatures())
                     <div class="ms-3 relative">
                         <x-dropdown align="right" width="60">
@@ -71,7 +81,6 @@
                     </div>
                 @endif
 
-                <div class="ml-2">{{ Auth::user()->name }}</div> <!-- Move the user's name before the profile picture -->
 
 
                 <!-- Settings Dropdown -->

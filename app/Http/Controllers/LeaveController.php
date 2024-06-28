@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Models\Notification; // Ensure this is included
 use Illuminate\Http\Request;
 use App\Models\Leave;
 use App\Models\User;
@@ -31,6 +32,7 @@ class LeaveController extends Controller
         $leave = new Leave;
     
         $leave->user_id = auth()->user()->id;
+        $user_name = auth()->user()->name;
     
         // Check if 'Other' was selected and use 'other_leave_type' if so
         if ($request->leave_type === 'Other') {
@@ -55,7 +57,7 @@ class LeaveController extends Controller
         }
     
         $leave->save();
-    
+
         return back()->with('msg', 'Your leave request has been successfully processed.');
     }
 
@@ -148,6 +150,8 @@ class LeaveController extends Controller
                             )
                     ->where('users.department', auth()->user()->department)
                     ->where('users.usertype', 'user')
+                    ->where('leaves.created_at', '>=', $thirtyDaysAgo)
+                    ->orderBy('leaves.created_at', 'desc')
                     ->get();
         $manageLeavesView = View::make('components.sup-get-leave', ['leave' => $leaves])->render(); // Render the manage-leave view
         return view('supervisor.sup-manage-leave', ['manageLeavesView' => $manageLeavesView]);
@@ -155,6 +159,8 @@ class LeaveController extends Controller
     }
 
     public function viewEmpLeaveRequest($user_id,$leave_id){
+        $thirtyDaysAgo = \Carbon\Carbon::now()->subDays(30);
+
         $data = Leave::join('users', 'users.id', '=', 'leaves.user_id')
                     ->select(
                         'users.name',
@@ -183,27 +189,26 @@ class LeaveController extends Controller
                             'supervisor_note' => $request->supervisor_note,
                         ]);
     
-        if ($request->approval_status === 'Approved') {
-            $user = User::find($request->user_id);
-            $supervisor_name = auth()->user()->name;
-            $data = [
-                'userId' => $user->id,
-                'message' => "Your leave request has been approved by $supervisor_name."
-            ];
+        $user = User::find($request->user_id);
+        $supervisor_name = auth()->user()->name;
+        $status_message = $request->approval_status === 'Approved' 
+                          ? "approved" 
+                          : "rejected";
+        $message = "Your leave request has been $status_message by $supervisor_name.";
     
-            // Emit notification event for approval
-            Http::post('http://192.168.10.116:3001/notify', $data);
-        } else if ($request->approval_status === 'Rejected') {
-            $user = User::find($request->user_id);
-            $supervisor_name = auth()->user()->name;
-            $data = [
-                'userId' => $user->id,
-                'message' => "Your leave request has been rejected by $supervisor_name."
-            ];
+        // Save the notification to the database
+        Notification::create([
+            'user_id' => $user->id,
+            'message' => $message,
+        ]);
     
-            // Emit notification event for rejection
-            Http::post('http://192.168.10.116:3001/notify', $data);
-        }
+        $data = [
+            'userId' => $user->id,
+            'message' => $message,
+        ];
+    
+        // Emit notification event
+        Http::post('http://127.0.0.1:3001/notify', $data);
     
         return redirect()->to('/view-leaves')->with('message', 'Leave status successfully updated!');
     }
@@ -211,6 +216,7 @@ class LeaveController extends Controller
 
 
     public function viewEmpLeaveMgt(Request $request) {
+        $thirtyDaysAgo = \Carbon\Carbon::now()->subDays(30);
 
         $leaves = Leave::join('users', 'users.id', '=', 'leaves.user_id')
                     ->select('users.name',
@@ -221,6 +227,8 @@ class LeaveController extends Controller
                             'leaves.management_approval', 
                             )
                     ->where('supervisor_approval', 'Approved')
+                    ->where('leaves.created_at', '>=', $thirtyDaysAgo)
+                    ->orderBy('leaves.created_at', 'desc')
                     ->get();
         $manageLeavesView = View::make('components.mgt-get-leave', ['leave' => $leaves])->render(); // Render the manage-leave view
         return view('management.mgt-manage-leave', ['manageLeavesView' => $manageLeavesView]);
@@ -256,27 +264,39 @@ class LeaveController extends Controller
                             'management_note' => $request->management_note,
                         ]);
     
-        if ($request->approval_status === 'Approved') {
-            $user = User::find($request->user_id);
-            $manager_name = auth()->user()->name;
-            $data = [
-                'userId' => $user->id,
-                'message' => "Your leave request has been approved by $manager_name."
-            ];
+        $user = User::find($request->user_id);
+        $manager_name = auth()->user()->name;
+        $status_message = $request->approval_status === 'Approved' 
+                          ? "approved" 
+                          : "rejected";
+        $message = "Your leave request has been $status_message by $manager_name.";
     
-            // Emit notification event for approval
-            Http::post('http://192.168.10.116:3001/notify', $data);
-        } else if ($request->approval_status === 'Rejected') {
-            $user = User::find($request->user_id);
-            $manager_name = auth()->user()->name;
-            $data = [
-                'userId' => $user->id,
-                'message' => "Your leave request has been rejected by $manager_name."
-            ];
+        // Save the notification to the database
+        Notification::create([
+            'user_id' => $user->id,
+            'message' => $message,
+        ]);
     
-            // Emit notification event for rejection
-            Http::post('http://192.168.10.116:3001/notify', $data);
+        $data = [
+            'userId' => $user->id,
+            'message' => $message,
+        ];
+
+        // Create a specific message for HR
+        $hrMessage = "$manager_name has $status_message the leave request of $user->name.";        
+
+        // Get all HR users (assuming they have a role 'HR')
+        $hrUsers = User::where('usertype', 'hr')->get();
+
+        foreach ($hrUsers as $hrUser) {
+            Notification::create([
+                'user_id' => $hrUser->id,
+                'message' => $hrMessage,
+            ]);
         }
+    
+        // Emit notification event
+        Http::post('http://127.0.0.1:3001/notify', $data);
     
         return redirect()->to('/view-leaves-mgt')->with('message', 'Leave status successfully updated!');
     }
@@ -452,24 +472,24 @@ class LeaveController extends Controller
     
 
     public function showRemainingLeaves()
-{
-    $userCategory = trim(strtolower(auth()->user()->category));
-    $remainingLeaves = [];
-    
-    if ($userCategory === 'internship') {
-        $remainingLeaves = $this->getInternshipRemainingLeave(request());
-    } else {
-        $remainingLeaves = $this->getRemainingLeaves(request());
-    }
+    {
+        $userCategory = trim(strtolower(auth()->user()->category));
+        $remainingLeaves = [];
+        
+        if ($userCategory === 'internship') {
+            $remainingLeaves = $this->getInternshipRemainingLeave(request());
+        } else {
+            $remainingLeaves = $this->getRemainingLeaves(request());
+        }
 
-    // Dump the $remainingLeaves variable to check its contents
-    // dd($remainingLeaves);
-    
-    return view('hr.home', [
-        'remainingLeaves' => $remainingLeaves,
-        'userCategory' => $userCategory
-    ]);
-}
+        // Dump the $remainingLeaves variable to check its contents
+        // dd($remainingLeaves);
+        
+        return view('hr.home', [
+            'remainingLeaves' => $remainingLeaves,
+            'userCategory' => $userCategory
+        ]);
+    }
 
 
 
@@ -816,4 +836,44 @@ class LeaveController extends Controller
 
     }
 
+
+
+    public function search(Request $request)
+    {
+        $query = Leave::where('user_id', $request->employee_id);
+
+        if ($request->start_date) {
+            $query->whereDate('date', '>=', $request->start_date);
+        }
+
+        if ($request->end_date) {
+            $query->whereDate('date', '<=', $request->end_date);
+        }
+
+        $leaves = $query->get();
+
+        return response()->json(['leaves' => $leaves]);
+    }
+
+    public function update(Request $request, $id)
+    {
+        $leave = Leave::findOrFail($id);
+        $leave->leave_type = $request->leave_type;
+        $leave->start_date = $request->check_in;
+        $leave->end_date = $request->check_in;
+        $leave->save();
+
+        return response()->json(['success' => true]);
+    }
+
+    public function destroy($id)
+    {
+        Leave::findOrFail($id)->delete();
+        return response()->json(['success' => true]);
+    }
+
+
 }
+
+
+

@@ -26,17 +26,17 @@
                 <li class="{{ Request::is('manage-leave') ? 'active' : '' }}">
                     <a href="/manage-leave">Manage Leaves</a>
                 </li>
-                <li>
-                    <a href="#">Attendance Tracking</a>
+                <li class="{{ Request::is('track-attendance') ? 'active' : '' }}">
+                    <a href="/track-attendance">Attendance Tracking</a>
                 </li>
 
-	          <li class="{{ Request::is('view-my-leaves') ? 'active' : '' }}">
-              <a href="/view-my-leaves">Notifications</a>
-	          </li>
+                <li class="{{ Request::is('view-my-leaves') ? 'active' : '' }}">
+                  <a href="/view-my-leaves">Notifications</a>
+                </li>
 
-              <li>
-              <a href="#">Help and Support</a>
-	          </li>
+                <li>
+                  <a href="#">Help and Support</a>
+                </li>
 
 
 	        </ul>
